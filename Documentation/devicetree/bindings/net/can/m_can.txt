@@ -73,3 +73,21 @@ Board dts:
 		max-bitrate = <5000000>;
 	};
 };
+
+Example:(MA35D1)
+SOC dtsi:
+can0: can@403C0000 {
+	compatible = "bosch,m_can";
+	reg = <0x0 0x403C0000 0x0 0x200>, <0x0 0x403C0200 0x0 0x4000>;
+	reg-names = "m_can", "message_ram";
+	interrupts = <GIC_SPI 70 IRQ_TYPE_EDGE_RISING>,
+				 <GIC_SPI 71 IRQ_TYPE_EDGE_RISING>;
+	interrupt-names = "int0", "int1";
+	clocks = <&clk hclk3>,
+			 <&clk can1_gate>;
+	clock-names = "hclk", "cclk";
+	bosch,mram-cfg = <0x0 0 0 32 0 0 0 1>;
+};
+
+
+
