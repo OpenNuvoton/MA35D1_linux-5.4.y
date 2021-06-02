@@ -572,6 +572,12 @@ config VIDEO_NT99141
 	help
 	   Novatek sensor support
 
+config VIDEO_HM1055
+        tristate "HiMax HM1055 sensor support"
+        depends on VIDEO_V4L2 && I2C
+        help
+           HiMax sensor support
+
 config VIDEO_IMX214
 	tristate "Sony IMX214 sensor support"
 	depends on GPIOLIB && I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
