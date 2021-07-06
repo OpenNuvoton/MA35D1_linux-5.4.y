@@ -89,6 +89,9 @@ static const u32 default_msg_level = (NETIF_MSG_DRV | NETIF_MSG_PROBE |
 				      NETIF_MSG_LINK | NETIF_MSG_IFUP |
 				      NETIF_MSG_IFDOWN | NETIF_MSG_TIMER);
 
+#define STMMAC_DEFAULT_CONFIG_TIMER	1000
+#define STMMAC_CONFIG_TIMER(x) (jiffies + msecs_to_jiffies(x))
+
 #define STMMAC_DEFAULT_LPI_TIMER	1000
 static int eee_timer = STMMAC_DEFAULT_LPI_TIMER;
 module_param(eee_timer, int, 0644);
@@ -931,6 +934,7 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 	struct stmmac_priv *priv = netdev_priv(to_net_dev(config->dev));
 
 	stmmac_mac_set(priv, priv->ioaddr, true);
+	mod_timer(&priv->config_timer, STMMAC_CONFIG_TIMER(STMMAC_DEFAULT_CONFIG_TIMER));
 	if (phy && priv->dma_cap.eee) {
 		priv->eee_active = phy_init_eee(phy, 1) >= 0;
 		priv->eee_enabled = stmmac_eee_init(priv);
@@ -2560,7 +2564,7 @@ static int stmmac_hw_setup(struct net_device *dev, bool init_ptp)
 
 	/* Enable the MAC Rx/Tx */
 	stmmac_mac_set(priv, priv->ioaddr, true);
-
+	mod_timer(&priv->config_timer, STMMAC_CONFIG_TIMER(STMMAC_DEFAULT_CONFIG_TIMER));
 	/* Set the HW DMA mode and the COE */
 	stmmac_dma_operation_mode(priv);
 
@@ -4439,6 +4443,16 @@ static int stmmac_hw_init(struct stmmac_priv *priv)
 	return 0;
 }
 
+
+static void stmmac_config(struct timer_list *t)
+{
+	struct stmmac_priv *priv = from_timer(priv, t, config_timer);
+	u32 value = readl(priv->ioaddr + MAC_CTRL_REG);
+
+	writel(value, priv->ioaddr + MAC_CTRL_REG);
+}
+
+
 /**
  * stmmac_dvr_probe
  * @device: device pointer
@@ -4468,7 +4482,7 @@ int stmmac_dvr_probe(struct device *device,
 	priv = netdev_priv(ndev);
 	priv->device = device;
 	priv->dev = ndev;
-
+	timer_setup(&priv->config_timer, stmmac_config, 0);
 	stmmac_set_ethtool_ops(ndev);
 	priv->pause = pause;
 	priv->plat = plat_dat;
@@ -4731,6 +4745,7 @@ int stmmac_dvr_remove(struct device *dev)
 	    priv->hw->pcs != STMMAC_PCS_RTBI)
 		stmmac_mdio_unregister(ndev);
 	destroy_workqueue(priv->wq);
+	del_timer_sync(&priv->config_timer);
 	mutex_destroy(&priv->lock);
 
 	return 0;
