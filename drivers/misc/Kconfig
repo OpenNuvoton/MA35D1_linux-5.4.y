@@ -484,6 +484,12 @@ config MA35D1_EBI
 	help
 	  This driver provides support for Nuvoton MA35D1 EBI.
 
+config MA35D1_MISCTRL
+	tristate "Nuvoton MA35D1 MISC control support"
+	depends on ARCH_MA35D1
+	help
+	  This driver provides support for Nuvoton MA35D1 MISC control.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
