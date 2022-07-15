@@ -70,6 +70,7 @@
 
 struct ma35d1_timer {
 	spinlock_t lock;
+	struct device *dev;
 	struct clk *clk;
 	struct clk *eclk;
 	struct regmap *regmap;
@@ -134,7 +135,7 @@ static irqreturn_t ma35d1_timer_interrupt(int irq, void *dev_id)
 
 				} else {
 					/* Display the measured input frequency */
-					t->cap =  1000000 / (t1 - t0);
+					t->cap =  12000000 / (t1 - t0);
 					t->update = 1;
 
 				}
@@ -160,104 +161,107 @@ static irqreturn_t ma35d1_timer_interrupt(int irq, void *dev_id)
 
 static void timer_SwitchClkSrc(u8 u8clksel, struct ma35d1_timer *t)
 {
-
+	struct clk *clkmux;
 	u8 ch;
 	u32 val, tmpval;
+	ulong tmrFreq;
+	int ret;
 
 	ch = t->ch;
 	t->clksel = u8clksel;
-	if(u8clksel == 1 || u8clksel == 5)
+
+	if(u8clksel == 1 || u8clksel == 5) {
 		// timer clock is lxt 32.768k or lirc 32kHz, set prescaler to 1 - 1.
 		t->psc = 0;
-	else if(u8clksel == 0)
-		// timer clock is hxt 24MHz, set prescaler to 24 - 1.
-		t->psc = (24-1);
-	else if(u8clksel == 7)
+		tmrFreq = 32768;
+	}
+	else if(u8clksel == 0) {
+		// timer clock is hxt 24MHz, set prescaler to 2 - 1.
+		t->psc = (2-1);
+		tmrFreq = 24000000;
+	}
+	else if(u8clksel == 7) {
 		// timer clock is hirc 12MHz, set prescaler to 12 - 1.
-		t->psc = (12-1);
-	else
-		t->psc = (180-1);
-
-	if (IS_ERR(t->clk)) {
-		pr_debug("failed to get clk gate.\n");
-		return;
+		t->psc = 0;
+		tmrFreq = 12000000;
+	}
+	else {
+		t->psc = (10-1);
+		tmrFreq = 180000000;
 	}
 
 	if(t->ch <= 7) {
 		regmap_read(t->regmap, 0x1c, &val);
+		pr_debug("   tmr%d before clksel0:0x%08x  >>>\n", ch, val);
 		tmpval = (u8clksel << (ch*4));
 		regmap_write(t->regmap, 0x1c, tmpval | (val & ~(0x7 << (ch*4))));
 		regmap_read(t->regmap, 0x1c, &val);
+		pr_debug("  tmr%d after  clksel0: [ 0x%08x ]  >>>\n", ch, val);
 	} else {
 		regmap_read(t->regmap, 0x20, &val);
+		pr_debug("  tmr%d before clksel0:0x%08x  >>>\n", ch, val);
 		tmpval = (u8clksel << ((ch%8)*4));
 		regmap_write(t->regmap, 0x20, tmpval | (val & ~(0x7 << ((ch%8)*4))));
 		regmap_read(t->regmap, 0x20, &val);
+		pr_debug("  tmr%d after  clksel0: [ 0x%08x ]  >>>\n", ch, val);
 	}
 
-	clk_set_parent(t->eclk, t->clk);
+	if(ch == 0)
+		t->eclk = devm_clk_get(t->dev, "tmr0_mux");
+	else if(ch == 1)
+		t->eclk = devm_clk_get(t->dev, "tmr1_mux");
+	else if(ch == 2)
+		t->eclk = devm_clk_get(t->dev, "tmr2_mux");
+	else if(ch == 3)
+		t->eclk = devm_clk_get(t->dev, "tmr3_mux");
+	else if(ch == 4)
+		t->eclk = devm_clk_get(t->dev, "tmr4_mux");
+	else if(ch == 5)
+		t->eclk = devm_clk_get(t->dev, "tmr5_mux");
+	else if(ch == 6)
+		t->eclk = devm_clk_get(t->dev, "tmr6_mux");
+	else if(ch == 7)
+		t->eclk = devm_clk_get(t->dev, "tmr7_mux");
+	else if(ch == 8)
+		t->eclk = devm_clk_get(t->dev, "tmr8_mux");
+	else if(ch == 9)
+		t->eclk = devm_clk_get(t->dev, "tmr9_mux");
+	else if(ch == 10)
+		t->eclk = devm_clk_get(t->dev, "tmr10_mux");
+	else if(ch == 11)
+		t->eclk = devm_clk_get(t->dev, "tmr11_mux");
 
-	if(ch == 0) {
-		tmr[ch]->clk = clk_get(NULL, "tmr0_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr0_mux");
-	} else if(ch == 1) {
-		tmr[ch]->clk = clk_get(NULL, "tmr1_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr1_mux");
-	} else if(ch == 2) {
-		tmr[ch]->clk = clk_get(NULL, "tmr2_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr2_mux");
-	} else if(ch == 3) {
-		tmr[ch]->clk = clk_get(NULL, "tmr3_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr3_mux");
-	} else if(ch == 4) {
-		tmr[ch]->clk = clk_get(NULL, "tmr4_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr4_mux");
-	} else if(ch == 5) {
-		tmr[ch]->clk = clk_get(NULL, "tmr5_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr5_mux");
-	} else if(ch == 6) {
-		tmr[ch]->clk = clk_get(NULL, "tmr6_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr6_mux");
-	} else if(ch == 7) {
-		tmr[ch]->clk = clk_get(NULL, "tmr7_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr7_mux");
-	} else if(ch == 8) {
-		tmr[ch]->clk = clk_get(NULL, "tmr8_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr8_mux");
-	} else if(ch == 9) {
-		tmr[ch]->clk = clk_get(NULL, "tmr9_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr9_mux");
-	} else if(ch == 10) {
-		tmr[ch]->clk = clk_get(NULL, "tmr10_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr10_mux");
-	} else if(ch == 11) {
-		tmr[ch]->clk = clk_get(NULL, "tmr11_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr11_mux");
-	}
-
-	if (IS_ERR(tmr[ch]->clk)) {
-		printk("failed to get tmr clock\n");
+	if (IS_ERR(t->eclk)) {
+		ret = PTR_ERR(t->eclk);
+		dev_err(t->dev, "failed to get tmr eclk, ret %d\n", ret);
 		return;
 	}
 
-	if (IS_ERR(tmr[ch]->eclk)) {
-		printk("failed to get tmr eclock\n");
+	clk_set_rate(t->eclk, tmrFreq);
+	clkmux = clk_get_parent(t->eclk);
+	if (IS_ERR(clkmux)) {
+		dev_err(t->dev, "failed to get tmr eclock\n");
+		ret = PTR_ERR(clkmux);
 		return;
 	}
 
-	tmr[ch]-> clksel= t->clksel;
+	ret = clk_set_parent(t->eclk, clkmux);
+	if (ret < 0) {
+		dev_err(t->dev, "failed to set parent %s for %s: %d\n",
+			__clk_get_name(clkmux),
+			__clk_get_name(t->eclk), ret);
+		return;
+	}
 
-	clk_prepare(tmr[ch]->clk);
-	clk_enable(tmr[ch]->clk);
-	clk_prepare(tmr[ch]->eclk);
-	clk_enable(tmr[ch]->eclk);
-
+	pr_debug("  tmr%d set parent  %s@%ld Hz for %s\n", ch,
+		__clk_get_name(clkmux), clk_get_rate(clkmux), __clk_get_name(t->eclk));
 }
-
 
 static void stop_timer(struct ma35d1_timer *t)
 {
 	unsigned long flag;
+
+	pr_debug("L:%d %s\n", __LINE__, __FUNCTION__);
 
 	spin_lock_irqsave(&t->lock, flag);
 
@@ -282,6 +286,8 @@ static ssize_t timer_read(struct file *filp, char __user *buf, size_t count,
 	unsigned long flag;
 	struct ma35d1_timer *t = (struct ma35d1_timer *)filp->private_data;
 	int ret = 0;
+
+	pr_debug("L:%d %s\n", __LINE__, __FUNCTION__);
 
 	spin_lock_irqsave(&t->lock, flag);
 	if(t->mode != TIMER_OPMODE_TRIGGER_COUNTING &&
@@ -347,15 +353,15 @@ static int timer_release(struct inode *inode, struct file *filp)
 	u8 ch = t->ch;
 	unsigned long flag;
 
+	pr_debug("L:%d %s\n", __LINE__, __FUNCTION__);
+
 	stop_timer(t);
 
 	// free irq
 	free_irq(tmr[ch]->irq, tmr[ch]);
 	// disable clk
-	clk_disable(tmr[ch]->clk);
-	clk_disable(tmr[ch]->eclk);
-	clk_put(tmr[ch]->clk);
-	clk_put(tmr[ch]->eclk);
+	clk_disable_unprepare(tmr[ch]->eclk);
+	clk_disable_unprepare(tmr[ch]->clk);
 
 	spin_lock_irqsave(&tmr[ch]->lock, flag);
 	tmr[ch]->occupied = 0;
@@ -368,17 +374,22 @@ static int timer_release(struct inode *inode, struct file *filp)
 static int timer_open(struct inode *inode, struct file *filp)
 {
 	int i, ret;
-	u8 ch;
+	u8 ch, u8clksel;
 	unsigned long flag;
 	struct clk *clkmux, *clkgate;
+	int minor = iminor(inode);
 
-	for(i = 0; i < TIMER_CH; i++)
+#if 1
+	for(i = 2/*0*/; i < 4/*TIMER_CH*/; i++)
 	{
-		if(tmr[i]->minor == iminor(inode)) {
+		if(tmr[i]->minor == minor) {
 			ch = i;
 			break;
 		}
 	}
+#else
+	ch = 2;
+#endif
 
 	spin_lock_irqsave(&tmr[ch]->lock, flag);
 	if(tmr[ch]->occupied) {
@@ -399,96 +410,18 @@ static int timer_open(struct inode *inode, struct file *filp)
 
 	filp->private_data = tmr[ch];
 
-	// configure engine clock
-	clkgate = tmr[ch]->clk;
-	if (IS_ERR(tmr[ch]->clk)) {
-		pr_debug("failed to get clk\n");
-		ret = PTR_ERR(tmr[ch]->clk);
-		goto out1;
-	}
-
-
-	if(ch == 0) {
-		clkmux = clk_get(NULL, "tmr0_mux");
-	} else if (ch == 1) {
-		clkmux = clk_get(NULL, "tmr1_mux");
-	} else if (ch == 2) {
-		clkmux = clk_get(NULL, "tmr2_mux");
-	} else if (ch == 3) {
-		clkmux = clk_get(NULL, "tmr3_mux");
-	} else if (ch == 4) {
-		clkmux = clk_get(NULL, "tmr4_mux");
-	} else if (ch == 5) {
-		clkmux = clk_get(NULL, "tmr5_mux");
-	} else if (ch == 6) {
-		clkmux = clk_get(NULL, "tmr6_mux");
-	} else if (ch == 7) {
-		clkmux = clk_get(NULL, "tmr7_mux");
-	} else if (ch == 8) {
-		clkmux = clk_get(NULL, "tmr8_mux");
-	} else if (ch == 9) {
-		clkmux = clk_get(NULL, "tmr9_mux");
-	} else if (ch == 10) {
-		clkmux = clk_get(NULL, "tmr10_mux");
-	} else if (ch == 11) {
-		clkmux = clk_get(NULL, "tmr11_mux");
-	}
-
-	if (IS_ERR(tmr[ch]->eclk)) {
-		pr_debug("failed to get timer clock mux\n");
+	clkmux = clk_get_parent(tmr[ch]->eclk);
+	if (IS_ERR(clkmux)) {
+		dev_err(tmr[ch]->dev, "failed to get tmr eclock\n");
 		ret = PTR_ERR(clkmux);
 		goto out1;
 	}
 
-	clk_set_parent(clkmux, clkgate);
-
-	if(ch == 0) {
-		tmr[ch]->clk = clk_get(NULL, "tmr0_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr0_mux");
-	} else if(ch == 1) {
-		tmr[ch]->clk = clk_get(NULL, "tmr1_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr1_mux");
-	} else if(ch == 2) {
-		tmr[ch]->clk = clk_get(NULL, "tmr2_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr2_mux");
-	} else if(ch == 3) {
-		tmr[ch]->clk = clk_get(NULL, "tmr3_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr3_mux");
-	} else if(ch == 4) {
-		tmr[ch]->clk = clk_get(NULL, "tmr4_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr4_mux");
-	} else if(ch == 5) {
-		tmr[ch]->clk = clk_get(NULL, "tmr5_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr5_mux");
-	} else if(ch == 6) {
-		tmr[ch]->clk = clk_get(NULL, "tmr6_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr6_mux");
-	} else if(ch == 7) {
-		tmr[ch]->clk = clk_get(NULL, "tmr7_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr7_mux");
-	} else if(ch == 8) {
-		tmr[ch]->clk = clk_get(NULL, "tmr8_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr8_mux");
-	} else if(ch == 9) {
-		tmr[ch]->clk = clk_get(NULL, "tmr9_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr9_mux");
-	} else if(ch == 10) {
-		tmr[ch]->clk = clk_get(NULL, "tmr10_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr10_mux");
-	} else if(ch == 11) {
-		tmr[ch]->clk = clk_get(NULL, "tmr11_gate");
-		tmr[ch]->eclk = clk_get(NULL, "tmr11_mux");
-	}
-
-	if (IS_ERR(tmr[ch]->clk)) {
-		pr_debug("failed to get tmr clock\n");
-		ret = PTR_ERR(tmr[ch]->clk);
-		goto out1;
-	}
-
-	if (IS_ERR(tmr[ch]->eclk)) {
-		pr_debug("failed to get tmr eclock\n");
-		ret = PTR_ERR(tmr[ch]->eclk);
+	ret = clk_set_parent(tmr[ch]->eclk, clkmux);
+	if (ret < 0) {
+		dev_err(tmr[ch]->dev, "failed to set parent %s for %s: %d\n",
+			__clk_get_name(clkmux),
+			__clk_get_name(tmr[ch]->eclk), ret);
 		goto out1;
 	}
 
@@ -496,10 +429,10 @@ static int timer_open(struct inode *inode, struct file *filp)
 	clk_enable(tmr[ch]->clk);
 	clk_prepare(tmr[ch]->eclk);
 	clk_enable(tmr[ch]->eclk);
+
 	return 0;
 
 out1:
-
 	free_irq(tmr[ch]->irq, tmr[ch]);
 out2:
 	spin_lock_irqsave(&tmr[ch]->lock, flag);
@@ -514,6 +447,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	unsigned long flag;
 	struct ma35d1_timer *t = (struct ma35d1_timer *)filp->private_data;
 	unsigned int param;
+	u32 val;
 
 	// stop timer before we do any change
 	stop_timer(t);
@@ -551,9 +485,11 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		writel_relaxed(param, t->base + REG_TIMER_CMP);
 		// enable timeout interrupt
-		writel_relaxed(readl_relaxed(t->base + REG_TIMER_CTL) | TIMER_PERIODIC_MODE |
-		               TIMER_CNT_IEN | TIMER_CNT_EN | t->psc, t->base + REG_TIMER_CTL);
-
+		//val = readl_relaxed(t->base + REG_TIMER_CTL) & ~(0xff);
+		val =  TIMER_PERIODIC | TIMER_CNT_IEN | t->psc;
+		writel_relaxed(val, t->base + REG_TIMER_CTL);
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc, 
+			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_PERIODIC;
 		spin_unlock_irqrestore(&t->lock, flag);
 
@@ -582,8 +518,10 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		writel_relaxed(param, t->base + REG_TIMER_CMP);
 
 		// enable timeout interrupt
-		writel_relaxed(readl_relaxed(t->base + REG_TIMER_CTL) | TIMER_PERIODIC |
-		             TIMER_CNT_IEN | TIMER_WK_EN | t->psc, t->base + REG_TIMER_CTL);
+		val =  TIMER_PERIODIC | TIMER_CNT_IEN | TIMER_WK_EN;
+		writel_relaxed(val, t->base + REG_TIMER_CTL);
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc, 
+			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_PERIODIC;
 		spin_unlock_irqrestore(&t->lock, flag);
 
@@ -602,9 +540,10 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		spin_lock_irqsave(&t->lock, flag);
 
 		writel_relaxed(param, t->base + REG_TIMER_CMP);
-		writel_relaxed(readl_relaxed(t->base + REG_TIMER_CTL) | TIMER_TOGGLE,
-		               t->base + REG_TIMER_CTL);
-
+		val =  TIMER_TOGGLE | t->psc;
+		writel_relaxed(val, t->base + REG_TIMER_CTL);
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc,
+			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_TOGGLE;
 		spin_unlock_irqrestore(&t->lock, flag);
 
@@ -617,9 +556,10 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		spin_lock_irqsave(&t->lock, flag);
 		writel_relaxed(param, t->base + REG_TIMER_CMP);
-		writel_relaxed(t->psc | TIMER_EVENT_COUNTER | TIMER_PERIODIC_MODE |
-		               TMR_EXTCNT_EDGE_FF | TIMER_CNT_IEN, t->base + REG_TIMER_CTL);
-
+		val =  TIMER_EVENT_COUNTER | TIMER_PERIODIC_MODE | TIMER_CNT_IEN | TMR_EXTCNT_EDGE_FF;
+		writel_relaxed(val, t->base + REG_TIMER_CTL);
+		printk("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc,
+			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_EVENT_COUNTING;
 		spin_unlock_irqrestore(&t->lock, flag);
 
@@ -636,7 +576,8 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		// enable capture interrupt
 		writel_relaxed(TIMER_CAPTURE_IEN | TIMER_FREE_COUNTING,
 		               t->base + REG_TIMER_EXTCTL);
-
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], EXTCTL: 0x%08x\n\n", t->psc, 
+			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_EXTCTL));
 		t->mode = TIMER_OPMODE_FREE_COUNTING;
 		spin_unlock_irqrestore(&t->lock, flag);
 
@@ -653,7 +594,8 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		// enable capture interrupt
 		writel_relaxed(TIMER_CAPTURE_IEN | TIMER_COUNTER_RESET,
 		               t->base + REG_TIMER_EXTCTL);
-
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], EXTCTL: 0x%08\n\n", t->psc, 
+			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_EXTCTL));
 		t->mode = TIMER_OPMODE_TRIGGER_COUNTING;
 		spin_unlock_irqrestore(&t->lock, flag);
 		break;
@@ -756,7 +698,10 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 	struct device_node *node = dev->of_node;
 	const char *clkmux, *clkgate;
 	u32   ch, val32[2], val;
+	char *str;
 	int ret;
+
+	dev_info(dev, "Nuvoton MA35D1 Timer Driver");
 
 	if (of_property_read_u32_array(pdev->dev.of_node, "port-number", val32,
 	                               1) != 0) {
@@ -775,21 +720,63 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 	if (IS_ERR(tmr[ch]->base))
 		return PTR_ERR(tmr[ch]->base);
 
+	tmr[ch]->dev = &pdev->dev;
 	ret = misc_register(&timer_dev[ch]);
 	if (ret) {
 		pr_err("misc registration failed\n");
 	}
 
-	of_property_read_string(pdev->dev.of_node, "clock-enable", &clkgate);
-	tmr[ch]->clk = devm_clk_get(dev, clkgate);
-	if (IS_ERR(tmr[ch]->clk)) {
-		if (PTR_ERR(tmr[ch]->clk) != -ENOENT)
-			return PTR_ERR(tmr[ch]->clk);
-
-		tmr[ch]->clk = NULL;
+	if(ch == 0) {
+		clkgate = "tmr0_gate";
+		clkmux = "tmr0_mux";
+	} else if(ch == 1) {
+		clkgate = "tmr1_gate";
+		clkmux = "tmr1_mux";
+	} else if(ch == 2) {
+		clkgate = "tmr2_gate";
+		clkmux = "tmr2_mux";
+	} else if(ch == 3) {
+		clkgate = "tmr3_gate";
+		clkmux = "tmr3_mux";
+	} else if(ch == 4) {
+		clkgate = "tmr4_gate";
+		clkmux = "tmr4_mux";
+	} else if(ch == 5) {
+		clkgate = "tmr5_gate";
+		clkmux = "tmr5_mux";
+	} else if(ch == 6) {
+		clkgate = "tmr6_gate";
+		clkmux = "tmr6_mux";
+	} else if(ch == 7) {
+		clkgate = "tmr7_gate";
+		clkmux = "tmr7_mux";
+	} else if(ch == 8) {
+		clkgate = "tmr8_gate";
+		clkmux = "tmr8_mux";
+	} else if(ch == 9) {
+		clkgate = "tmr9_gate";
+		clkmux = "tmr9_mux";
+	} else if(ch == 10) {
+		clkgate = "tmr10_gate";
+		clkmux = "tmr10_mux";
+	} else if(ch == 11) {
+		clkgate = "tmr11_gate";
+		clkmux = "tmr11_mux";
 	}
 
-	of_property_read_string(pdev->dev.of_node, "clock-names", &clkmux);
+	tmr[ch]->clk = devm_clk_get(&pdev->dev, clkgate);
+	if (IS_ERR(tmr[ch]->clk)) {
+		ret = PTR_ERR(tmr[ch]->clk);
+		dev_err(&pdev->dev, "failed to get tmr%_gate\n", ch);
+		return -ENOENT;
+	}
+
+	ret = clk_prepare_enable(tmr[ch]->clk);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to enable tmr%d clk\n", ch);
+		return -ENOENT;
+	}
+
 	tmr[ch]->eclk = devm_clk_get(dev, clkmux);
 	if (IS_ERR(tmr[ch]->eclk)) {
 		if (PTR_ERR(tmr[ch]->eclk) != -ENOENT)
@@ -798,9 +785,9 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 		tmr[ch]->eclk = NULL;
 	}
 
-	ret = clk_prepare_enable(tmr[ch]->clk);
+	ret = clk_prepare_enable(tmr[ch]->eclk);
 	if (ret) {
-		dev_err(dev, "Failed to enable clock\n");
+		dev_err(dev, "Failed to enable tmr%d eclk\n", ch);
 		return ret;
 	}
 
@@ -820,7 +807,6 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 			tmr[ch]->clksel = (val & (0x7 <<((ch%8)*4))) >> ((ch%8)*4);
 		}
 	}
-
 
 	tmr[ch]->minor = MINOR(timer_dev[ch].minor);
 	tmr[ch]->ch = ch;
@@ -843,12 +829,9 @@ static int ma35d1_timer_remove(struct platform_device *pdev)
 
 	misc_deregister(&timer_dev[ch]);
 
-
 	return 0;
 }
 
-
-#ifdef CONFIG_PM_SLEEP
 static int ma35d1_timer_suspend(struct platform_device *pdev,
                                  pm_message_t state)
 {
@@ -857,10 +840,8 @@ static int ma35d1_timer_suspend(struct platform_device *pdev,
 	if(t->ch == gu8_ch) {
 		writel_relaxed(readl_relaxed(t->base + REG_TIMER_CTL) | TIMER_PERIODIC |
 		             TIMER_CNT_IEN | TIMER_WK_EN, t->base + REG_TIMER_CTL);
-
 		enable_irq_wake(t->irq);
 	}
-
 	return 0;
 }
 
@@ -876,14 +857,6 @@ static int ma35d1_timer_resume(struct platform_device *pdev)
 
 	return 0;
 }
-
-#else
-
-#define ma35d1_timer_suspend 	NULL
-#define ma35d1_timer_resume	NULL
-
-#endif
-
 
 static const struct of_device_id ma35d1_tmr_of_match[] = {
 	{ .compatible = "nuvoton,ma35d1-timer" },
@@ -906,5 +879,5 @@ static struct platform_driver ma35d1_tmr_driver = {
 module_platform_driver(ma35d1_tmr_driver);
 
 MODULE_ALIAS("platform:ma35d1-timer");
-MODULE_DESCRIPTION("Timer driver for Nuvoton MA35D1");
-MODULE_LICENSE("GPL v2");
+MODULE_DESCRIPTION("Nuvoton MA35D1 Timer driver");
+MODULE_LICENSE("GPL");

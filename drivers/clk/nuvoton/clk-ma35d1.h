@@ -163,7 +163,7 @@ static inline struct clk_hw *ma35d1_clk_mux(const char *name,
 					    int num_parents)
 {
 	return clk_hw_register_mux(NULL, name, parents, num_parents,
-				   CLK_SET_RATE_NO_REPARENT, reg, shift,
+				   CLK_SET_RATE_PARENT, reg, shift,
 				   width, 0, &ma35d1_lock);
 }
 

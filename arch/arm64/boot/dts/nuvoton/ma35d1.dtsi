@@ -1209,8 +1209,8 @@
 		interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <0>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr0_gate";
-		clock-names = "tmr0_mux";
+		clocks = <&clk TMR0_GATE>, <&clk TMR0_MUX>;
+		clock-names = "tmr0_gate", "tmr0_mux";
 		status = "disabled";
 	};
 
@@ -1220,8 +1220,8 @@
 		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <1>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr1_gate";
-		clock-names = "tmr1_mux";
+		clocks = <&clk TMR1_GATE>, <&clk TMR1_MUX>;
+		clock-names = "tmr1_gate", "tmr1_mux";
 		status = "disabled";
 	};
 
@@ -1231,8 +1231,8 @@
 		interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <2>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr2_gate";
-		clock-names = "tmr2_mux";
+		clocks = <&clk TMR2_GATE>, <&clk TMR2_MUX>;
+		clock-names = "tmr2_gate", "tmr2_mux";
 		status = "disabled";
 	};
 
@@ -1242,8 +1242,8 @@
 		interrupts = <GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <3>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr3_gate";
-		clock-names = "tmr3_mux";
+		clocks = <&clk TMR3_GATE>, <&clk TMR3_MUX>;
+		clock-names = "tmr3_gate", "tmr3_mux";
 		status = "disabled";
 	};
 
@@ -1253,8 +1253,8 @@
 		interrupts = <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <4>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr4_gate";
-		clock-names = "tmr4_mux";
+		clocks = <&clk TMR4_GATE>, <&clk TMR4_MUX>;
+		clock-names = "tmr4_gate", "tmr4_mux";
 		status = "disabled";
 	};
 
@@ -1264,8 +1264,8 @@
 		interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <5>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr5_gate";
-		clock-names = "tmr5_mux";
+		clocks = <&clk TMR5_GATE>, <&clk TMR5_MUX>;
+		clock-names = "tmr5_gate", "tmr5_mux";
 		status = "disabled";
 	};
 
@@ -1275,8 +1275,8 @@
 		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <6>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr6_gate";
-		clock-names = "tmr6_mux";
+		clocks = <&clk TMR6_GATE>, <&clk TMR6_MUX>;
+		clock-names = "tmr6_gate", "tmr6_mux";
 		status = "disabled";
 	};
 
@@ -1286,8 +1286,8 @@
 		interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <7>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr7_gate";
-		clock-names = "tmr7_mux";
+		clocks = <&clk TMR7_GATE>, <&clk TMR7_MUX>;
+		clock-names = "tmr7_gate", "tmr7_mux";
 		status = "disabled";
 	};
 
@@ -1297,8 +1297,8 @@
 		interrupts = <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <8>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr8_gate";
-		clock-names = "tmr8_mux";
+		clocks = <&clk TMR8_GATE>, <&clk TMR8_MUX>;
+		clock-names = "tmr8_gate", "tmr8_mux";
 		status = "disabled";
 	};
 
@@ -1308,8 +1308,8 @@
 		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <9>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr9_gate";
-		clock-names = "tmr9_mux";
+		clocks = <&clk TMR9_GATE>, <&clk TMR9_MUX>;
+		clock-names = "tmr9_gate", "tmr9_mux";
 		status = "disabled";
 	};
 
@@ -1319,8 +1319,8 @@
 		interrupts = <GIC_SPI 127 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <10>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr10_gate";
-		clock-names = "tmr10_mux";
+		clocks = <&clk TMR10_GATE>, <&clk TMR10_MUX>;
+		clock-names = "tmr10_gate", "tmr10_mux";
 		status = "disabled";
 	};
 
@@ -1330,8 +1330,8 @@
 		interrupts = <GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>;
 		port-number = <11>;
 		nuvoton,clk = <&clk>;
-		clock-enable = "tmr11_gate";
-		clock-names = "tmr11_mux";
+		clocks = <&clk TMR11_GATE>, <&clk TMR11_MUX>;
+		clock-names = "tmr11_gate", "tmr11_mux";
 		status = "disabled";
 	};
 

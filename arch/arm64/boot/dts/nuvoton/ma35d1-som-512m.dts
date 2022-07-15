@@ -342,6 +342,18 @@
 	pinctrl-0 = <&pinctrl_ebi0_16bit>;
 };
 
+&timer2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_timer2>;
+};
+
+&timer3 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_timer3>;
+};
+
 &pinctrl {
 	gmac0 {
 		pinctrl_gmac0: gmac0grp{
@@ -721,4 +733,19 @@
 		};
 	};
 
+	timer2 {
+		pinctrl_timer2: timer2grp{
+			nuvoton,pins =
+				<SYS_GPL_MFPH_PL14MFP_TM2	&pcfg_default>,
+				<SYS_GPL_MFPH_PL15MFP_TM2_EXT	&pcfg_default>;
+		};
+	};
+
+	timer3 {
+		pinctrl_timer3: timer3grp{
+			nuvoton,pins =
+				<SYS_GPJ_MFPH_PJ14MFP_TM3	&pcfg_default>,
+				<SYS_GPJ_MFPH_PJ15MFP_TM3_EXT	&pcfg_default>;
+		};
+	};
 };
