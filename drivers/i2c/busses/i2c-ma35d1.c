@@ -373,7 +373,6 @@ static void i2c_ma35d1_irq_master_TRx(struct ma35d1_i2c *i2c, unsigned long iics
 		/* 0x48: SLA+R has been transmitted and NACK has been received */
 
 		if (!(i2c->msg->flags & I2C_M_IGNORE_NAK)) {
-			dev_err(i2c->dev, "\n i2c: ack was not received\n");
 			ma35d1_i2c_stop(i2c, -ENXIO);
 		}
 	} else if (iicstat == M_REPEAT_START) {
