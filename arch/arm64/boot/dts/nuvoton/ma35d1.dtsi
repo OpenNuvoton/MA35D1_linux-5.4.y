@@ -626,7 +626,6 @@
 
 	rproc {
 		compatible	= "nuvoton, ma35d1-rproc";
-		mboxes = <&wormhole 1>;
 		resets = <&reset MA35D1_RESET_CM4>;
 		memory-region = <&rproc_buf>;
 		status = "okay";
