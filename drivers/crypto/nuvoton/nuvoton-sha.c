@@ -240,7 +240,6 @@ static int nuvoton_sha_dma_run(struct nu_sha_dev *dd, int is_key_block)
 		param[1].u.value.b = 0;
 		param[2].u.value.a = tctx->hmac_key_len;
 
-printk("%s 1\n", __func__);
 		err = tee_client_invoke_func(dd->octx, &inv_arg, param);
 		if ((err < 0) || (inv_arg.ret != 0)) {
 			pr_err("PTA_CMD_CRYPTO_SHA_START err: %x\n",
@@ -272,7 +271,7 @@ printk("%s 1\n", __func__);
 	param[1].u.memref.shm = dd->shm_pool;
 	param[1].u.memref.size = CRYPTO_SHM_SIZE;
 	param[1].u.memref.shm_offs = 0;
-printk("%s 2\n", __func__);
+
 	err = tee_client_invoke_func(dd->octx, &inv_arg, param);
 	if ((err < 0) || (inv_arg.ret != 0)) {
 		pr_err("PTA_CMD_CRYPTO_SHA_UPDATE err: %x\n", inv_arg.ret);
@@ -300,7 +299,6 @@ printk("%s 2\n", __func__);
 		param[0].u.value.a = C_CODE_SHA;
 		param[1].u.value.a = dd->crypto_session_id;
 
-printk("%s 3\n", __func__);
 		err = tee_client_invoke_func(dd->octx, &inv_arg, param);
 		if ((err < 0) || (inv_arg.ret != 0)) {
 			pr_err("PTA_CMD_CRYPTO_CLOSE_SESSION err: %x\n",
@@ -363,7 +361,6 @@ static int nuvoton_sha_init(struct ahash_request *req)
 	struct hash_alg_common *halg = crypto_hash_alg_common(tfm);
 	char	*cra_name = halg->base.cra_name;
 
- printk("SHA - %s\n", cra_name);
 	tctx->hash_mode = 0;
 	if (strncmp(cra_name, "hmac", 4) == 0) {
 		tctx->hash_mode = HMAC_CTL_HMACEN;
@@ -478,7 +475,6 @@ static void nuvoton_sha_sg_to_dma_buffer(struct ahash_request *req,
 		tctx->bufcnt += copy_len;
 		ctx->req_len -= copy_len;
 		ctx->sg_off += copy_len;
-		// req->nbytes -= copy_len;
 
 		if (ctx->sg_off >= ctx->sg->length) {
 			ctx->sg = sg_next(ctx->sg);
