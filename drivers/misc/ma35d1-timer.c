@@ -374,9 +374,9 @@ static int timer_release(struct inode *inode, struct file *filp)
 static int timer_open(struct inode *inode, struct file *filp)
 {
 	int i, ret;
-	u8 ch, u8clksel;
+	u8 ch;
 	unsigned long flag;
-	struct clk *clkmux, *clkgate;
+	struct clk *clkmux;
 	int minor = iminor(inode);
 
 #if 1
@@ -488,7 +488,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		//val = readl_relaxed(t->base + REG_TIMER_CTL) & ~(0xff);
 		val =  TIMER_PERIODIC | TIMER_CNT_IEN | t->psc;
 		writel_relaxed(val, t->base + REG_TIMER_CTL);
-		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc, 
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n", t->psc, 
 			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_PERIODIC;
 		spin_unlock_irqrestore(&t->lock, flag);
@@ -520,7 +520,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		// enable timeout interrupt
 		val =  TIMER_PERIODIC | TIMER_CNT_IEN | TIMER_WK_EN;
 		writel_relaxed(val, t->base + REG_TIMER_CTL);
-		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc, 
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n", t->psc, 
 			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_PERIODIC;
 		spin_unlock_irqrestore(&t->lock, flag);
@@ -542,7 +542,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		writel_relaxed(param, t->base + REG_TIMER_CMP);
 		val =  TIMER_TOGGLE | t->psc;
 		writel_relaxed(val, t->base + REG_TIMER_CTL);
-		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc,
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n", t->psc,
 			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_TOGGLE;
 		spin_unlock_irqrestore(&t->lock, flag);
@@ -558,7 +558,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		writel_relaxed(param, t->base + REG_TIMER_CMP);
 		val =  TIMER_EVENT_COUNTER | TIMER_PERIODIC_MODE | TIMER_CNT_IEN | TMR_EXTCNT_EDGE_FF;
 		writel_relaxed(val, t->base + REG_TIMER_CTL);
-		printk("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n\n", t->psc,
+		printk("PSC: %d, CTL:[ 0x%08x ], CMP: %d\n", t->psc,
 			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_CMP));
 		t->mode = TIMER_OPMODE_EVENT_COUNTING;
 		spin_unlock_irqrestore(&t->lock, flag);
@@ -576,7 +576,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		// enable capture interrupt
 		writel_relaxed(TIMER_CAPTURE_IEN | TIMER_FREE_COUNTING,
 		               t->base + REG_TIMER_EXTCTL);
-		pr_debug("PSC: %d, CTL:[ 0x%08x ], EXTCTL: 0x%08x\n\n", t->psc, 
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], EXTCTL: 0x%08x\n", t->psc, 
 			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_EXTCTL));
 		t->mode = TIMER_OPMODE_FREE_COUNTING;
 		spin_unlock_irqrestore(&t->lock, flag);
@@ -594,7 +594,7 @@ static long timer_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		// enable capture interrupt
 		writel_relaxed(TIMER_CAPTURE_IEN | TIMER_COUNTER_RESET,
 		               t->base + REG_TIMER_EXTCTL);
-		pr_debug("PSC: %d, CTL:[ 0x%08x ], EXTCTL: 0x%08\n\n", t->psc, 
+		pr_debug("PSC: %d, CTL:[ 0x%08x ], EXTCTL: 0x%08x\n", t->psc, 
 			readl_relaxed(t->base + REG_TIMER_CTL), readl_relaxed(t->base + REG_TIMER_EXTCTL));
 		t->mode = TIMER_OPMODE_TRIGGER_COUNTING;
 		spin_unlock_irqrestore(&t->lock, flag);
@@ -698,7 +698,6 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 	struct device_node *node = dev->of_node;
 	const char *clkmux, *clkgate;
 	u32   ch, val32[2], val;
-	char *str;
 	int ret;
 
 	dev_info(dev, "Nuvoton MA35D1 Timer Driver");
@@ -767,7 +766,7 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 	tmr[ch]->clk = devm_clk_get(&pdev->dev, clkgate);
 	if (IS_ERR(tmr[ch]->clk)) {
 		ret = PTR_ERR(tmr[ch]->clk);
-		dev_err(&pdev->dev, "failed to get tmr%_gate\n", ch);
+		dev_err(&pdev->dev, "failed to get tmr%d_gate\n", ch);
 		return -ENOENT;
 	}
 
@@ -787,7 +786,7 @@ static int ma35d1_timer_probe(struct platform_device *pdev)
 
 	ret = clk_prepare_enable(tmr[ch]->eclk);
 	if (ret) {
-		dev_err(dev, "Failed to enable tmr%d eclk\n", ch);
+		dev_err(dev, "Failed to enable tmr%d_eclk\n", ch);
 		return ret;
 	}
 
