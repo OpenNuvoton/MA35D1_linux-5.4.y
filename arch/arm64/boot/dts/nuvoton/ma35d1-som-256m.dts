@@ -291,6 +291,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_display0>;
 	memory-region = <&display_buf>;
+	resets = <&reset MA35D1_RESET_DISP>;
 	status = "okay";
 };
 

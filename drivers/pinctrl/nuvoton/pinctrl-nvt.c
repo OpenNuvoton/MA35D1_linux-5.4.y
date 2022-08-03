@@ -359,13 +359,18 @@ static int nvt_gpio_core_direction_out(struct gpio_chip *gc,
 	unsigned int value;
 	struct nvt_pin_bank *bank = gpiochip_get_data(gc);
 	void __iomem *base = bank->reg_base;
+
+	value = __raw_readl(base + GPIO_DOUT);
+	if(val)
+		__raw_writel(value|(1<<gpio_num), base + GPIO_DOUT);
+	else
+		__raw_writel(value&~(1<<gpio_num), base + GPIO_DOUT);
 	spin_lock_irqsave(&bank->lock, flags);
 	value = __raw_readl(base + GPIO_MODE);
 	value &= ~GPIO_SET_MODE(gpio_num, GPIO_MODE_QUASI);
 	value |= GPIO_SET_MODE(gpio_num, GPIO_MODE_OUTPUT);
 	__raw_writel(value, base + GPIO_MODE);
 	spin_unlock_irqrestore(&bank->lock, flags);
-	nvt_gpio_core_set(gc, gpio_num, val);
 	return 0;
 }
 

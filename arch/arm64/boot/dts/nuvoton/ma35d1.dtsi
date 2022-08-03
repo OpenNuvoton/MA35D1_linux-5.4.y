@@ -1637,7 +1637,6 @@
 		nuvoton,clk = <&clk>;
 		clocks = <&clk DCU_GATE>, <&clk DCUP_DIV>;
 		clock-names = "dcu_gate", "dcup_div";
-		resets = <&reset MA35D1_RESET_DISP>;
 		status = "disabled";
 
 		reset_offset_en = "no";
