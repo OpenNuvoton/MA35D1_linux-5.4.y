@@ -10,6 +10,7 @@
 #include <linux/mailbox_controller.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/mfd/ma35d1-sys.h>
 
 // Allocat 4 channels for Tx/Rx, and 4 for general interrupt
 #define DATA_CHANS		4	// chan 0~3
@@ -227,6 +228,8 @@ static int wormhole_probe(struct platform_device *pdev)
 	struct nvt_wh *wh;
 	int ret;
 	int i;
+
+	ma35d1_reg_unlock();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
