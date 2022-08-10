@@ -229,8 +229,6 @@ static int wormhole_probe(struct platform_device *pdev)
 	int ret;
 	int i;
 
-	ma35d1_reg_unlock();
-
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -247,7 +245,9 @@ static int wormhole_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 
+	ma35d1_reg_unlock();
 	ret = clk_prepare_enable(priv->clk);
+	ma35d1_reg_lock();
 	if (ret)
 		return ret;
 
