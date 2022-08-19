@@ -1602,7 +1602,8 @@
 		compatible = "nuvoton,ma35d1-eadc";
 		reg = <0x0 0x40430000 0x0 0x10000>;
 		interrupts = <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>;
-		clock-enable = "eadc_gate";
+		clocks = <&clk EADC_GATE>;
+		clock-names = "eadc_gate";
 		eadc-frequency = <10000000>;
 		eadc-channels = <0>;
 		status = "disabled";
