@@ -22,6 +22,7 @@
 #include <linux/net_tstamp.h>
 #include <linux/reset.h>
 #include <net/page_pool.h>
+#include <net/ncsi.h>
 
 struct stmmac_resources {
 	void __iomem *addr;
@@ -235,6 +236,9 @@ struct stmmac_priv {
 
 	/* Receive Side Scaling */
 	struct stmmac_rss rss;
+
+	/* Sideband interface */
+	struct ncsi_dev *ncsidev;
 };
 
 enum stmmac_state {

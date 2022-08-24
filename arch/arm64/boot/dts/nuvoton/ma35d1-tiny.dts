@@ -1,0 +1,60 @@
+/*
+ * Device Tree Source for MA35D1 TINY Board (TINY)
+ *
+ * Copyright (C) 2021 Nuvoton Technology Corp.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+/dts-v1/;
+
+#include "ma35d1.dtsi"
+
+/ {
+	model = "Nuvoton MA35D1-Tiny";
+
+	chosen {
+                bootargs = "root=/dev/ram0 console=ttyS0,115200n8 rdinit=/sbin/init mem=256M";
+	};
+
+};
+
+&mem {
+	device_type = "memory";
+	reg = <0x00000000 0x80000000 0 0x10000000>; /* DRAM space - 1, size : 256MB DRAM */
+};
+
+
+&gmac1 {
+	use-ncsi;
+        phy-mode = "rmii";
+	status = "okay";
+	snps,ps-speed = <100>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gmac1>;
+};
+
+&pinctrl {
+
+	gmac1 {
+		pinctrl_gmac1: gmac1grp{
+			nuvoton,pins =
+				<SYS_GPF_MFPL_PF0MFP_RMII1_MDC		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF1MFP_RMII1_MDIO		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF2MFP_RMII1_TXEN		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF3MFP_RMII1_TXD0		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF4MFP_RMII1_TXD1		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF5MFP_RMII1_REFCLK	&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF6MFP_RMII1_CRSDV	&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPL_PF7MFP_RMII1_RXD0		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPH_PF8MFP_RMII1_RXD1		&pcfg_emac_3_3V>,
+				<SYS_GPF_MFPH_PF9MFP_RMII1_RXERR	&pcfg_emac_3_3V>;
+		};
+	};
+
+};
