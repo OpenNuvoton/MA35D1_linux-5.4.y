@@ -417,14 +417,14 @@
 	eadc0 {
 		pinctrl_eadc0: eadc0grp{
 			nuvoton,pins =
-				<SYS_GPB_MFPL_PB0MFP_EADC0_CH0	&pcfg_default>,
-				<SYS_GPB_MFPL_PB1MFP_EADC0_CH1	&pcfg_default>,
-				<SYS_GPB_MFPL_PB2MFP_EADC0_CH2	&pcfg_default>,
-				<SYS_GPB_MFPL_PB3MFP_EADC0_CH3	&pcfg_default>,
-				<SYS_GPB_MFPL_PB4MFP_EADC0_CH4	&pcfg_default>,
-				<SYS_GPB_MFPL_PB5MFP_EADC0_CH5	&pcfg_default>,
-				<SYS_GPB_MFPL_PB6MFP_EADC0_CH6	&pcfg_default>,
-				<SYS_GPB_MFPL_PB7MFP_EADC0_CH7	&pcfg_default>;
+				<SYS_GPB_MFPL_PB0MFP_EADC0_CH0  &pcfg_default>,
+				<SYS_GPB_MFPL_PB1MFP_EADC0_CH4  &pcfg_default>,
+				<SYS_GPB_MFPL_PB2MFP_EADC0_CH1  &pcfg_default>,
+				<SYS_GPB_MFPL_PB3MFP_EADC0_CH5  &pcfg_default>,
+				<SYS_GPB_MFPL_PB4MFP_EADC0_CH2  &pcfg_default>,
+				<SYS_GPB_MFPL_PB5MFP_EADC0_CH6  &pcfg_default>,
+				<SYS_GPB_MFPL_PB6MFP_EADC0_CH3  &pcfg_default>,
+				<SYS_GPB_MFPL_PB7MFP_EADC0_CH7  &pcfg_default>;
 		};
 	};
 

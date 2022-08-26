@@ -107,17 +107,17 @@
 /********************* Bit definition of GPB_MFPL register **********************/
 #define SYS_GPB_MFPL_PB0MFP_EADC0_CH0        0x088    0x00    0x8
 #define SYS_GPB_MFPL_PB0MFP_GPIO             0x088    0x00    0x0
-#define SYS_GPB_MFPL_PB1MFP_EADC0_CH1        0x088    0x04    0x8
+#define SYS_GPB_MFPL_PB1MFP_EADC0_CH4        0x088    0x04    0x8
 #define SYS_GPB_MFPL_PB1MFP_GPIO             0x088    0x04    0x0
-#define SYS_GPB_MFPL_PB2MFP_EADC0_CH2        0x088    0x08    0x8
+#define SYS_GPB_MFPL_PB2MFP_EADC0_CH1        0x088    0x08    0x8
 #define SYS_GPB_MFPL_PB2MFP_GPIO             0x088    0x08    0x0
-#define SYS_GPB_MFPL_PB3MFP_EADC0_CH3        0x088    0x0C    0x8
+#define SYS_GPB_MFPL_PB3MFP_EADC0_CH5        0x088    0x0C    0x8
 #define SYS_GPB_MFPL_PB3MFP_GPIO             0x088    0x0C    0x0
-#define SYS_GPB_MFPL_PB4MFP_EADC0_CH4        0x088    0x10    0x8
+#define SYS_GPB_MFPL_PB4MFP_EADC0_CH2        0x088    0x10    0x8
 #define SYS_GPB_MFPL_PB4MFP_GPIO             0x088    0x10    0x0
-#define SYS_GPB_MFPL_PB5MFP_EADC0_CH5        0x088    0x14    0x8
+#define SYS_GPB_MFPL_PB5MFP_EADC0_CH6        0x088    0x14    0x8
 #define SYS_GPB_MFPL_PB5MFP_GPIO             0x088    0x14    0x0
-#define SYS_GPB_MFPL_PB6MFP_EADC0_CH6        0x088    0x18    0x8
+#define SYS_GPB_MFPL_PB6MFP_EADC0_CH3        0x088    0x18    0x8
 #define SYS_GPB_MFPL_PB6MFP_GPIO             0x088    0x18    0x0
 #define SYS_GPB_MFPL_PB7MFP_EADC0_CH7        0x088    0x1C    0x8
 #define SYS_GPB_MFPL_PB7MFP_GPIO             0x088    0x1C    0x0
