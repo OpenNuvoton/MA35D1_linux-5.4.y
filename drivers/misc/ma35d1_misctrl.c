@@ -24,13 +24,15 @@
 #include <linux/of.h>
 #include <soc/nuvoton/ma35d1_sip.h>
 
-#define CPU_FREQUENCY_700M  0x1001
-#define CPU_FREQUENCY_500M  0x1002
-#define CPU_FREQUENCY_1000M 0x1003
+#define CPU_FREQUENCY_500M  0x1001
+#define CPU_FREQUENCY_700M  0x1002
+#define CPU_FREQUENCY_800M  0x1003
+#define CPU_FREQUENCY_1000M 0x1004
 
 #define CPU_1000MHZ   1
-#define CPU_700MHZ    2
-#define CPU_500MHZ    3
+#define CPU_800MHZ    2
+#define CPU_700MHZ    3
+#define CPU_500MHZ    4
 
 struct ma35d1_misctrl {
 	int minor;
@@ -52,6 +54,13 @@ static long ma35d1_misctrl_ioctl(struct file *file, unsigned int cmd, unsigned l
 
 	switch(cmd)
 	{
+		case CPU_FREQUENCY_800M:
+
+			arm_smccc_smc(MA35D1_SIP_CPU_CLK, CPU_800MHZ,
+							0, 0, 0, 0, 0, 0, &res);
+
+		break;
+
 		case CPU_FREQUENCY_700M:
 
 			arm_smccc_smc(MA35D1_SIP_CPU_CLK, CPU_700MHZ,
