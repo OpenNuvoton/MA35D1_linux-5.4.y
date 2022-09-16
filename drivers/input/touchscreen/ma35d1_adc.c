@@ -342,18 +342,18 @@ static int report_touch(struct ma35d1_adc *priv)
 			if (xdata == 0 || xdata == 0xfff || ydata == 0 ||
 				ydata == 0xfff || abs(xdata-x) > 50 ||
 				abs(ydata-y) > 50) {
-				__raw_writel(__raw_readl(priv->base +
-					REG_ADC_CTL) | ADC_CTL_MST,
-					priv->base + REG_ADC_CTL);
+				hrtimer_start(&priv->trigger_hrt,
+				ms_to_ktime(1),
+				HRTIMER_MODE_REL);
 				return true;
 			}
 		}
 
 		if ((priv->ts_old == 1) && (abs(priv->ts_oldx-x) > 0x200 ||
 			abs(priv->ts_oldy-y) > 0x200)) {
-			__raw_writel(__raw_readl(priv->base +
-				REG_ADC_CTL) | ADC_CTL_MST,
-				priv->base + REG_ADC_CTL);
+			hrtimer_start(&priv->trigger_hrt,
+				ms_to_ktime(1),
+				HRTIMER_MODE_REL);
 			return true;
 		}
 		priv->ts_count = 0;
