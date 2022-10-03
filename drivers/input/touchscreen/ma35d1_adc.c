@@ -104,6 +104,7 @@ enum touch_state {
 	TS_PENDOWN,	/* Detecting pen down event */
 	TS_PAUSE,	/* Relinquish TS function, let IIO use ADC channel */
 	TS_WAKE,	/* Detect wakeup event */
+	TS_PENUP,	/* Detect pen up event */
 };
 
 struct ma35d1_adc {
@@ -131,6 +132,9 @@ struct ma35d1_adc {
 	int			ts_old;
 	int			ts_oldx;
 	int			ts_oldy;
+	int 		pd_handle; // mute before CTL mode change
+	int			pu_handle; // catch valid pu
+	int			touch_cnt; // debounce
 };
 
 static int report_touch(struct ma35d1_adc *priv);
@@ -146,9 +150,27 @@ static irqreturn_t ma35d1_adc_interrupt(int irq, void *private)
 	isr = __raw_readl(priv->base + REG_ADC_ISR);
 	wkisr = __raw_readl(priv->base + REG_ADC_WKISR);
 
+	if((isr & ADC_ISR_PEUEF) && (priv->ts_type == 5)) {
+		if(priv->pu_handle) {
+			priv->pu_handle = 0;
+			priv->ts_state = TS_PENUP;
+			hrtimer_cancel(&priv->trigger_hrt);
+			tasklet_schedule(&priv->ts_tasklet);
+		}
+	}
+	
 	if (isr & ADC_ISR_PEDEF) {
-		tasklet_schedule(&priv->ts_tasklet);
-		__raw_writel(ADC_ISR_PEDEF, priv->base + REG_ADC_ISR);
+		if(priv->ts_type == 5)
+		{
+			if(priv->pd_handle == 1) {
+				if(isr != (ADC_ISR_PEDEF | ADC_ISR_PEUEF))
+					tasklet_schedule(&priv->ts_tasklet);
+			}
+			else 
+				priv->pd_handle++;
+		}
+		else
+			tasklet_schedule(&priv->ts_tasklet);
 	}
 
 	if (wkisr & ADC_WKISR_WPEDEF)
@@ -156,19 +178,27 @@ static irqreturn_t ma35d1_adc_interrupt(int irq, void *private)
 
 	if (isr & ADC_ISR_NACF) {
 		complete(&priv->completion);
-		__raw_writel(ADC_ISR_NACF, priv->base + REG_ADC_ISR);
 	}
 
 	if (isr & ADC_ISR_MF) {
-		__raw_writel(ADC_ISR_MF, priv->base + REG_ADC_ISR);
-
-		if ((isr & ADC_ISR_TF) && (isr & ADC_ISR_ZF))
-			__raw_writel(ADC_ISR_TF | ADC_ISR_ZF,
-					priv->base + REG_ADC_ISR);
-			tasklet_schedule(&priv->ts_tasklet);
+		tasklet_schedule(&priv->ts_tasklet);
 	}
+	__raw_writel(isr, priv->base + REG_ADC_ISR);
 
 	return IRQ_HANDLED;
+}
+
+static void detect_penup(struct ma35d1_adc *priv)
+{
+	// Restart a new flow
+	priv->pu_handle = 0;
+	__raw_writel((__raw_readl(priv->base + REG_ADC_CTL) & ~ADC_CTL_MST) |
+		ADC_CTL_PEDEEN, priv->base + REG_ADC_CTL);
+
+	input_report_abs(priv->ts_dev, ABS_PRESSURE, 0);
+	input_sync(priv->ts_dev);
+
+	priv->ts_state = TS_PENDOWN;
 }
 
 static void ma35d1adc_ts_tasklet(struct ma35d1_adc *priv)
@@ -177,6 +207,8 @@ static void ma35d1adc_ts_tasklet(struct ma35d1_adc *priv)
 		detect_touch(priv);
 	else if (priv->ts_state == TS_CONVERT)
 		report_touch(priv);
+	else if(priv->ts_state == TS_PENUP)
+		detect_penup(priv);
 }
 
 
@@ -190,7 +222,9 @@ static enum hrtimer_restart trigger_hrtimer(struct hrtimer *hrtimer)
 	unsigned long flags;
 
 	spin_lock_irqsave(&priv->lock, flags);
-	__raw_writel(__raw_readl(priv->base + REG_ADC_CTL) | ADC_CTL_MST,
+	priv->pu_handle = priv->pd_handle = 0;
+	
+	__raw_writel((__raw_readl(priv->base + REG_ADC_CTL) & ~ADC_CTL_PEDEEN ) | ADC_CTL_MST,
 			priv->base + REG_ADC_CTL);
 	spin_unlock_irqrestore(&priv->lock, flags);
 
@@ -204,15 +238,28 @@ static void detect_touch(struct ma35d1_adc *priv)
 	spin_lock_irqsave(&priv->lock, flags);
 	priv->ts_state = TS_CONVERT;
 	/* Disable pen down detection*/
+	priv->pu_handle = priv->pd_handle = 0;
+	priv->touch_cnt = 3;
+	
 	__raw_writel(__raw_readl(priv->base + REG_ADC_CTL) &
 		~(ADC_CTL_PEDEEN), priv->base + REG_ADC_CTL);
-	/* Enable touch detection  */
-	__raw_writel((__raw_readl(priv->base + REG_ADC_CONF) &
-		~ADC_CONF_NACEN) | ADC_CONF_TEN | ADC_CONF_ZEN,
-		priv->base + REG_ADC_CONF);
-	/* Config interrupt */
-	__raw_writel((__raw_readl(priv->base + REG_ADC_IER) &
-		~ADC_IER_PEDEIEN) | ADC_IER_MIEN, priv->base + REG_ADC_IER);
+
+	if(priv->ts_type == 5)
+	{
+		__raw_writel((__raw_readl(priv->base + REG_ADC_CONF) & ~ADC_CONF_NACEN) | 
+			ADC_CONF_TEN, priv->base + REG_ADC_CONF);
+		__raw_writel(__raw_readl(priv->base + REG_ADC_IER) | ADC_IER_MIEN, 
+			priv->base + REG_ADC_IER);
+	}
+	else
+	{
+		/* Enable touch detection  */
+		__raw_writel((__raw_readl(priv->base + REG_ADC_CONF) & ~ADC_CONF_NACEN) | 
+			ADC_CONF_TEN | ADC_CONF_ZEN, priv->base + REG_ADC_CONF);
+		/* Config interrupt */
+		__raw_writel((__raw_readl(priv->base + REG_ADC_IER) & ~ADC_IER_PEDEIEN) | 
+			ADC_IER_MIEN, priv->base + REG_ADC_IER);
+	}
 
 	hrtimer_start(&priv->trigger_hrt,
 			ms_to_ktime(ADC_TS_SPS),
@@ -223,7 +270,9 @@ static void detect_touch(struct ma35d1_adc *priv)
 
 static void detect_pendown(struct ma35d1_adc *priv)
 {
-	unsigned long flags;
+	unsigned long flags, reg;
+
+	priv->ts_oldx = priv->ts_oldy = 0;
 
 	spin_lock_irqsave(&priv->lock, flags);
 	if (priv->ts_state == TS_CONVERT)
@@ -237,10 +286,17 @@ static void detect_pendown(struct ma35d1_adc *priv)
 			priv->base + REG_ADC_CONF);
 	/*Disable pendown Interrupt */
 	__raw_writel((__raw_readl(priv->base + REG_ADC_IER) &
-		~(ADC_IER_PEDEIEN)), priv->base + REG_ADC_IER);
+		~(ADC_IER_PEDEIEN | ADC_IER_PEUEIEN)), priv->base + REG_ADC_IER);
+	
 	/* Enable pen down event */
+	if(priv->ts_type == 5)
+		reg = ADC_CTL_ADEN | ADC_CTL_WMSWCH | ADC_CTL_PEDEEN;
+	else
+		reg = ADC_CTL_ADEN | ADC_CTL_PEDEEN;
+
+	//priv->pu_handle = 0;
 	__raw_writel((__raw_readl(priv->base + REG_ADC_CTL) & ~ADC_CTL_WKTEN) |
-		(ADC_CTL_ADEN | ADC_CTL_PEDEEN), priv->base + REG_ADC_CTL);
+		reg, priv->base + REG_ADC_CTL);
 
 	udelay(100);
 
@@ -249,9 +305,14 @@ static void detect_pendown(struct ma35d1_adc *priv)
 			priv->base + REG_ADC_ISR);
 
 	/* Enable pendown Interrupt */
+	if(priv->ts_type == 5)
+		reg = ADC_IER_PEDEIEN | ADC_IER_PEUEIEN;
+	else
+		reg = ADC_IER_PEDEIEN;
+
 	__raw_writel((__raw_readl(priv->base + REG_ADC_IER) &
 			~(ADC_IER_MIEN | ADC_IER_WKTIEN)) |
-			(ADC_IER_PEDEIEN), priv->base + REG_ADC_IER);
+			reg, priv->base + REG_ADC_IER);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
@@ -283,6 +344,12 @@ static void stop_detect(struct ma35d1_adc *priv)
 {
 	unsigned long flags;
 
+	if(priv->ts_type == 5)
+	{
+		input_report_abs(priv->ts_dev, ABS_PRESSURE, 0);
+		input_sync(priv->ts_dev);
+	}
+
 	spin_lock_irqsave(&priv->lock, flags);
 	if (priv->ts_state == TS_CONVERT)
 		hrtimer_cancel(&priv->trigger_hrt);
@@ -309,66 +376,90 @@ static int report_touch(struct ma35d1_adc *priv)
 	reg = __raw_readl(priv->base + REG_ADC_XYDATA);
 	x = reg & ADC_DATA_MASK;
 	y = reg >> ADC_DATA_SHIFT;
-	reg = __raw_readl(priv->base + REG_ADC_ZDATA);
-	z1 = reg & ADC_DATA_MASK;
-	z2 = reg >> ADC_DATA_SHIFT;
-	p = (x * (z2 - (z1 + 1))) / (z1 + 1);
+	
+	if(priv->ts_type == 5)
+	{
+		priv->pu_handle = 1;
+		__raw_writel((__raw_readl(priv->base + REG_ADC_CTL) &
+			~(ADC_CTL_MST)) | ADC_CTL_PEDEEN, priv->base + REG_ADC_CTL);
 
-	/* threshold value */
-	if ((__raw_readl(priv->base + REG_ADC_ZSORT0) &
-			0xfff) <= priv->p_th ||
-		(__raw_readl(priv->base + REG_ADC_ZSORT1) &
-			0xfff) <= priv->p_th ||
-		(__raw_readl(priv->base + REG_ADC_ZSORT2) &
-			0xfff) <= priv->p_th ||
-		(__raw_readl(priv->base + REG_ADC_ZSORT3) &
-			0xfff) <= priv->p_th) {
-		priv->ts_old = 0;
-		input_report_key(priv->ts_dev, BTN_TOUCH, 0);
-		if (priv->ts_count++ > ((priv->ts_time*1000)/ADC_TS_SPS))
-			detect_pendown(priv);
-		else
-			hrtimer_start(&priv->trigger_hrt,
-				ms_to_ktime(ADC_TS_SPS),
-				HRTIMER_MODE_REL);
-	} else {
-		u32 i, xdata, ydata;
-
-		z_cnt = 0;
-		for (i = 0; i <= 12; i += 4) {
-			reg = __raw_readl(priv->base + REG_ADC_XYSORT0 + i);
-			xdata = reg & ADC_DATA_MASK;
-			ydata = reg >> ADC_DATA_SHIFT;
-			if (xdata == 0 || xdata == 0xfff || ydata == 0 ||
-				ydata == 0xfff || abs(xdata-x) > 50 ||
-				abs(ydata-y) > 50) {
-				hrtimer_start(&priv->trigger_hrt,
-				ms_to_ktime(1),
-				HRTIMER_MODE_REL);
-				return true;
-			}
+		input_report_key(priv->ts_dev, BTN_TOUCH, 1);
+		input_report_abs(priv->ts_dev, ABS_PRESSURE, 2000);
+		if(priv->touch_cnt) {
+			input_report_abs(priv->ts_dev, ABS_Y, y);
+			input_report_abs(priv->ts_dev, ABS_X, x);
+			priv->touch_cnt--;
 		}
-
-		if ((priv->ts_old == 1) && (abs(priv->ts_oldx-x) > 0x200 ||
-			abs(priv->ts_oldy-y) > 0x200)) {
-			hrtimer_start(&priv->trigger_hrt,
-				ms_to_ktime(1),
-				HRTIMER_MODE_REL);
-			return true;
+		else {
+			input_report_abs(priv->ts_dev, ABS_Y, priv->ts_oldy);
+			input_report_abs(priv->ts_dev, ABS_X, priv->ts_oldx);
+			input_sync(priv->ts_dev);
 		}
-		priv->ts_count = 0;
-		priv->ts_old = 1;
+		hrtimer_start(&priv->trigger_hrt, ms_to_ktime(ADC_TS_SPS), HRTIMER_MODE_REL);
+
 		priv->ts_oldx = x;
 		priv->ts_oldy = y;
-		input_report_key(priv->ts_dev, BTN_TOUCH, 1);
-		input_report_abs(priv->ts_dev, ABS_X, x);
-		input_report_abs(priv->ts_dev, ABS_Y, y);
-		input_report_abs(priv->ts_dev, ABS_PRESSURE, p);
-		hrtimer_start(&priv->trigger_hrt,
-				ms_to_ktime(ADC_TS_SPS),
-				HRTIMER_MODE_REL);
+	} else {
+		reg = __raw_readl(priv->base + REG_ADC_ZDATA);
+		z1 = reg & ADC_DATA_MASK;
+		z2 = reg >> ADC_DATA_SHIFT;
+		p = (x * (z2 - (z1 + 1))) / (z1 + 1);
+		/* threshold value */
+		if ((__raw_readl(priv->base + REG_ADC_ZSORT0) &
+				0xfff) <= priv->p_th ||
+			(__raw_readl(priv->base + REG_ADC_ZSORT1) &
+				0xfff) <= priv->p_th ||
+			(__raw_readl(priv->base + REG_ADC_ZSORT2) &
+				0xfff) <= priv->p_th ||
+			(__raw_readl(priv->base + REG_ADC_ZSORT3) &
+				0xfff) <= priv->p_th) {
+			priv->ts_old = 0;
+			input_report_key(priv->ts_dev, BTN_TOUCH, 0);
+			if (priv->ts_count++ > ((priv->ts_time*1000)/ADC_TS_SPS))
+				detect_pendown(priv);
+			else
+				hrtimer_start(&priv->trigger_hrt,
+					ms_to_ktime(ADC_TS_SPS),
+					HRTIMER_MODE_REL);
+		} else {
+			u32 i, xdata, ydata;
+
+			z_cnt = 0;
+			for (i = 0; i <= 12; i += 4) {
+				reg = __raw_readl(priv->base + REG_ADC_XYSORT0 + i);
+				xdata = reg & ADC_DATA_MASK;
+				ydata = reg >> ADC_DATA_SHIFT;
+				if (xdata == 0 || xdata == 0xfff || ydata == 0 ||
+					ydata == 0xfff || abs(xdata-x) > 50 ||
+					abs(ydata-y) > 50) {
+					hrtimer_start(&priv->trigger_hrt,
+						ms_to_ktime(1),
+						HRTIMER_MODE_REL);
+					return true;
+				}
+			}
+
+			if ((priv->ts_old == 1) && (abs(priv->ts_oldx-x) > 0x200 ||
+				abs(priv->ts_oldy-y) > 0x200)) {
+				hrtimer_start(&priv->trigger_hrt,
+					ms_to_ktime(1),
+					HRTIMER_MODE_REL);
+				return true;
+			}
+			priv->ts_count = 0;
+			priv->ts_old = 1;
+			priv->ts_oldx = x;
+			priv->ts_oldy = y;
+			input_report_key(priv->ts_dev, BTN_TOUCH, 1);
+			input_report_abs(priv->ts_dev, ABS_X, x);
+			input_report_abs(priv->ts_dev, ABS_Y, y);
+			input_report_abs(priv->ts_dev, ABS_PRESSURE, p);
+			hrtimer_start(&priv->trigger_hrt,
+					ms_to_ktime(ADC_TS_SPS),
+					HRTIMER_MODE_REL);
+		}
+		input_sync(priv->ts_dev);
 	}
-	input_sync(priv->ts_dev);
 
 	return 0;
 }
@@ -385,6 +476,9 @@ static int ma35d1_ts_open(struct input_dev *dev)
 static void ma35d1_ts_close(struct input_dev *dev)
 {
 	struct ma35d1_adc *priv = input_get_drvdata(dev);
+
+	if(priv->ts_type == 5)
+		priv->pd_handle = 1;
 
 	stop_detect(priv);
 }
@@ -425,13 +519,14 @@ static int ma35d1_ts_register(struct platform_device *pdev)
 
 	if (priv->ts_type == 5)
 		__raw_writel(__raw_readl(priv->base +
-			REG_ADC_CTL) | ADC_CTL_WMSWCH,
+			REG_ADC_CTL) | ADC_CTL_WMSWCH | ADC_CTL_PEDEEN,
 			priv->base + REG_ADC_CTL);
 	else
 		__raw_writel(__raw_readl(priv->base +
 			REG_ADC_CTL) & ~ADC_CTL_WMSWCH,
 			priv->base + REG_ADC_CTL);
 	priv->ts_dev = ts_dev;
+	priv->pd_handle = 1;
 	return 0;
 }
 
