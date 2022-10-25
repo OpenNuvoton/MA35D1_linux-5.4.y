@@ -17,6 +17,7 @@
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
 #include <linux/reset.h>
+#include <linux/gpio/consumer.h>
 #include "sdhci-pltfm.h"
 
 #define MSHC_CTRL 0x508
@@ -322,6 +323,18 @@ static int ma35d1_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void ma35d1_shutdown(struct platform_device *pdev) {
+	struct gpio_desc *gpio;
+
+	gpio = devm_gpiod_get_optional(&pdev->dev, "power", GPIOD_OUT_LOW);
+	ma35d1_reg_unlock();
+	if(gpio) {
+		gpiod_set_value_cansleep(gpio, 1);
+		udelay(1);
+	}
+	ma35d1_reg_lock();
+}
+
 static const struct of_device_id sdhci_ma35d1_dt_ids[] = {
 	{ .compatible = "nuvoton,ma35d1-sdhci" },
 	{}
@@ -335,6 +348,7 @@ static struct platform_driver sdhci_ma35d1_driver = {
 	},
 	.probe	= ma35d1_probe,
 	.remove	= ma35d1_remove,
+	.shutdown = ma35d1_shutdown,
 };
 module_platform_driver(sdhci_ma35d1_driver);
 
