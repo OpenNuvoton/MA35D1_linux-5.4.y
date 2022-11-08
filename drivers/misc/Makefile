@@ -57,8 +57,8 @@ obj-y				+= cardreader/
 obj-$(CONFIG_PVPANIC)   	+= pvpanic.o
 obj-$(CONFIG_HABANA_AI)		+= habanalabs/
 obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
-obj-$(CONFIG_MA35D1_KS)   	+= ma35d1_ks.o
-obj-$(CONFIG_MA35D1_TIMER)   	+= ma35d1-timer.o
-obj-$(CONFIG_MA35D1_EBI)   	+= ma35d1-ebi.o
-obj-$(CONFIG_MA35D1_MISCTRL)   	+= ma35d1_misctrl.o
+obj-$(CONFIG_MA35D1_KS)		+= ma35d1-ks.o
+obj-$(CONFIG_MA35D1_TIMER)	+= ma35d1-timer.o
+obj-$(CONFIG_MA35D1_EBI)	+= ma35d1-ebi.o
+obj-$(CONFIG_MA35D1_MISCTRL)	+= ma35d1-misctrl.o
 
